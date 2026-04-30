@@ -24,7 +24,7 @@ if (EXISTS ${picoVscode})
 endif()
 # ====================================================================================
 set(PICO_BOARD pico2 CACHE STRING "Board type")
-set(FREERTOS_KERNEL_PATH "/tools/FreeRTOS-Kernel")
+set(FREERTOS_KERNEL_PATH "/opt/FreeRTOS-Kernel")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)

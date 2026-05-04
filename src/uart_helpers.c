@@ -60,7 +60,7 @@ void float_to_string(float value, char *buffer, int decimals, char delim){
 
 void uart_fprint(uart_inst_t* uart, float value, int decimals, char delim){
     char buffer[32] = {0};
-    float_to_string(value, buffer, 3, delim);
+    float_to_string(value, buffer, decimals, delim);
     uart_puts(uart, buffer);
 }
 

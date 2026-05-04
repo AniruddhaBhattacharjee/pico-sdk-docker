@@ -110,28 +110,26 @@ int64_t alarm_callback(alarm_id_t id, void *user_data) {
 int main()
 {
     stdio_init_all();
-    add_alarm_in_us(SAMPLE_PERIOD, alarm_callback, NULL, false);
-    xTaskCreate(fsamplingTask, "sampling-Task", 256, NULL, configMAX_PRIORITIES - 1, &sampling_taskHandle);
-    xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
-    //xTaskCreate(fmcp_rtemp_hc_task, "mcp-i2c-rhc-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_hc, taskHandle);
-    
+
     uart_init(UART_PORT, 115200);
     gpio_set_function(UART1_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(UART1_RX_PIN, GPIO_FUNC_UART);
-    //uart_puts(UART_PORT, "Hello UART!\n");
-    //printf("Hello, world!\n");
-    
+    // uart_puts(UART_PORT, "Hello UART!\n");
+    // printf("Hello, world!\n");
+    //  I2C setup and init
     i2c_init(I2C_PORT, I2C_BUS_FREQ);
     gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA_PIN);
     gpio_pull_up(I2C_SCL_PIN);
 
+    // init some gpio pins for oscilloscope debugging
     gpio_init(GPIO_TOGGLE_PIN);
     gpio_set_dir(GPIO_TOGGLE_PIN, GPIO_OUT);
     gpio_init(GPIO_TEST_PIN);
     gpio_set_dir(GPIO_TEST_PIN, GPIO_OUT);
-    // check if i2c device at 0x67 is present
+
+    // check if i2c mcp -device at 0x67 is present
     uint8_t dev_addr = 0x67, buf[2];
     tcold_res_t cold_res = HIGH_RES;
     adc_res_t adc_res = RES_18B;
@@ -139,7 +137,7 @@ int main()
     float tcold_temp = -1.0;
     char stemp[32] = {0};
     if(mcp9601_check_available(I2C_PORT, dev_addr, rxdata)){
-        //printf("I2C device found at 0x67.\n");
+        // printf("I2C device found at 0x15 67.\n");
         uart_puts(UART_PORT, "I2C device found at 0x67\n");
     }
     
@@ -150,40 +148,51 @@ int main()
     ina228_t ina_dev1;
     ina_dev1.i2c = I2C_PORT;
     ina_dev1.addr = INA228_I2C_ADDR_DEFAULT;
+    float bus_voltage = -1.0f, shunt_voltage = -2.0f;
+    if (ina228_check_available(&ina_dev1) == NO_ERROR)
+    {
+        uart_puts(UART_PORT, "INA228 Device found at default addr\n");
+    }
+    // Initialize INA228 device
     if (ina228_init(&ina_dev1) != NO_ERROR){
         uart_puts(UART_PORT, "Unable to initialize INA228 over I2C!\n");
     }
-    //if (ina228_set_calibration(&ina_dev1, ))
-    sleep_ms(2000);
-    vTaskStartScheduler();
-    while(1){
-    /*
-    uint8_t temp_buf[6], tHot_buf[2], tCold_buf[2], tDelta_buf[2];
-    float THot = 0.0f, TCold = 0.0f, TDelta = 0.0f;
-    //uint32_t start = time_us_32();
-    if (mcp9601_read_alltemp_reg(I2C_PORT, dev_addr, temp_buf, sizeof(temp_buf)) == NO_ERROR){
-        tHot_buf[0] = temp_buf[0]; tHot_buf[1] = temp_buf[1];
-        tCold_buf[0] = temp_buf[4]; tCold_buf[1] = temp_buf[5];
-        tDelta_buf[0] = temp_buf[2]; tDelta_buf[1] = temp_buf[3];
-        THot = mcp9601_convert_to_temp(tHot_buf);
-        TCold = mcp9601_convert_to_temp(tCold_buf);
-        TDelta = mcp9601_convert_to_temp(tDelta_buf);
+    // INA228: Set Calibrations with max-current and shunt resistor values
+    if (ina228_set_calibration(&ina_dev1, INA228_MAX_CURRENT, INA228_SHUNT_RES) != NO_ERROR)
+    {
+        uart_puts(UART_PORT, "Unable to calibrate INA228 device!\n");
     }
-    uart_fprint(UART_PORT, THot, 3, ',');
-    uart_fprint(UART_PORT, TCold, 3, ',');
-    //uart_fprint(UART_PORT, TDelta, 3, '\n');
-    //uint32_t end = time_us_32();
-    //uart_iprint(UART_PORT, (uint32_t)(end - start), '\n');
-    //sleep_ms(2000);
-    //vTaskStartScheduler();
-    
-    //while(1){
+    // INA228: check is able to read bus and shunt voltage.
+    if (ina228_read_bus_voltage(&ina_dev1, &bus_voltage) != NO_ERROR)
+    {
+        uart_puts(UART_PORT, "Unable to read INA228 bus voltage!\n");
+    }
+    else
+    {
+        uart_puts(UART_PORT, "INA228 Bus voltage: ");
+        uart_fprint(UART_PORT, bus_voltage, 3, '\n');
+    }
+    if (ina228_read_shunt_voltage(&ina_dev1, &shunt_voltage) != NO_ERROR)
+    {
+        uart_puts(UART_PORT, "Unable to read shunt INA228 voltage!\n");
+    }
+    else
+    {
+        uart_puts(UART_PORT, "INA228 Shunt voltage: ");
+        uart_fprint(UART_PORT, shunt_voltage, 8, '\n');
+    }
+
+    sleep_ms(2000);
+    add_alarm_in_us(SAMPLE_PERIOD, alarm_callback, NULL, false);
+    xTaskCreate(fsamplingTask, "sampling-Task", 256, NULL, configMAX_PRIORITIES - 1, &sampling_taskHandle);
+    // xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
+    vTaskStartScheduler();
+
+    {
         /*
-        gpio_put(GPIO_TOGGLE_PIN, 1);
-        sleep_ms(200);
-        gpio_put(GPIO_TOGGLE_PIN, 0);
-        sleep_ms(200);
-        printf("Loop.\n");
+        uint8_t temp_buf[6], tHot_buf[2], tCold_buf[2], tDelta_buf[2];
+        float THot = 0.0f, TCold = 0.0f, TDelta = 0.0f;
+        //uint32_t start = time_us_32();
         if (mcp9601_read_alltemp_reg(I2C_PORT, dev_addr, temp_buf, sizeof(temp_buf)) == NO_ERROR){
             tHot_buf[0] = temp_buf[0]; tHot_buf[1] = temp_buf[1];
             tCold_buf[0] = temp_buf[4]; tCold_buf[1] = temp_buf[5];
@@ -194,9 +203,32 @@ int main()
         }
         uart_fprint(UART_PORT, THot, 3, ',');
         uart_fprint(UART_PORT, TCold, 3, ',');
-        uart_fprint(UART_PORT, TDelta, 3, '\n');
-        //uart_puts(UART_PORT, "UART loop msg.");
-        */
+        //uart_fprint(UART_PORT, TDelta, 3, '\n');
+        //uint32_t end = time_us_32();
+        //uart_iprint(UART_PORT, (uint32_t)(end - start), '\n');
+        //sleep_ms(2000);
+        //vTaskStartScheduler();
+
+        //while(1){
+            /*
+            gpio_put(GPIO_TOGGLE_PIN, 1);
+            sleep_ms(200);
+            gpio_put(GPIO_TOGGLE_PIN, 0);
+            sleep_ms(200);
+            printf("Loop.\n");
+            if (mcp9601_read_alltemp_reg(I2C_PORT, dev_addr, temp_buf, sizeof(temp_buf)) == NO_ERROR){
+                tHot_buf[0] = temp_buf[0]; tHot_buf[1] = temp_buf[1];
+                tCold_buf[0] = temp_buf[4]; tCold_buf[1] = temp_buf[5];
+                tDelta_buf[0] = temp_buf[2]; tDelta_buf[1] = temp_buf[3];
+                THot = mcp9601_convert_to_temp(tHot_buf);
+                TCold = mcp9601_convert_to_temp(tCold_buf);
+                TDelta = mcp9601_convert_to_temp(tDelta_buf);
+            }
+            uart_fprint(UART_PORT, THot, 3, ',');
+            uart_fprint(UART_PORT, TCold, 3, ',');
+            uart_fprint(UART_PORT, TDelta, 3, '\n');
+            //uart_puts(UART_PORT, "UART loop msg.");
+            */
     }
 
     return 0;

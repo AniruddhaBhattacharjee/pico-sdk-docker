@@ -13,6 +13,20 @@ static uint16_t read_u16(uint8_t *buf){
     return (buf[0] << 8) | buf[1];
 }
 
+i2c_err_t ina228_check_available(ina228_t *dev)
+{
+    uint8_t *rxdata;
+    int ret = i2c_read_blocking(dev->i2c, dev->addr, rxdata, 1, false);
+    if (ret < 0)
+    {
+        return RD_ERROR_1;
+    }
+    else
+    {
+        return NO_ERROR;
+    }
+}
+
 i2c_err_t ina228_init(ina228_t *dev){
     // Default config- continuous conversion
     uint16_t config = 0x0000;
@@ -48,6 +62,7 @@ i2c_err_t ina228_set_calibration(ina228_t *dev, float max_current, float shunt_r
 
 i2c_err_t ina228_read_bus_voltage(ina228_t *dev, float *voltage){
     uint8_t buf[3];
+    // uint32_t buf;
     uint8_t reg = INA228_REG_BUS_VOLT;
     int wret = i2c_write_blocking(dev->i2c, dev->addr, &reg, 1, false);
     if (wret<0) return WR_ERROR;
@@ -60,7 +75,7 @@ i2c_err_t ina228_read_bus_voltage(ina228_t *dev, float *voltage){
 
     int32_t raw = read_s24(buf);
 
-    // LSB = 195.3125 uV 
+    // LSB = 195.3125 uV
     *voltage = raw * 0.0001953125f;
 
     return NO_ERROR;

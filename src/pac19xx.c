@@ -1,5 +1,4 @@
 #include "pac19xx.h"
-#include "pac19xx_reg.h"
 
 /* register maps */
 
@@ -42,66 +41,88 @@ static int32_t read_s32(uint8_t *buf){
 
 bool pac19xx_init(pac19xx_t *dev){
     return true;
+    // need to complete for different sampling modes and other config settings.
 }
 
-bool pac19xx_refresh(pac19xx_t *dev){
+i2c_err_t pac19xx_refresh(pac19xx_t *dev)
+{
     uint8_t cmd = PAC19XX_CMD_REFRESH;
-    return i2c_write_reg(&dev->i2c, cmd, NULL, 0);
+    int wret = i2c_write_blocking(dev->i2c, dev->addr, &cmd, 1, false);
+    if (wret < 0)
+        return WR_ERROR;
+    return NO_ERROR;
+    // return i2c_write_reg(&dev->i2c, cmd, NULL, 0);
 }
 
-bool pac19xx_read_bus_voltage(pac19xx_t *dev, int ch, float *voltage){
+i2c_err_t pac19xx_read_bus_voltage(pac19xx_t *dev, int ch, float *voltage)
+{
     if (ch < 0 || ch >= 4)
         return false;
 
     uint8_t buf[2];
 
-    if (!i2c_read_reg(&dev->i2c, vbus_reg[ch], buf, 2))
-        return false;
+    int wret = i2c_write_blocking(dev->i2c, dev->addr, &vbus_reg[ch], 1, false);
+    if (wret < 0)
+        return WR_ERROR;
+    int rret = i2c_read_blocking(dev->i2c, dev->addr, buf, sizeof(buf), false);
+    if (rret != (int)sizeof(buf))
+        return RD_ERROR_1;
+    // if (!i2c_read_reg(&dev->i2c, vbus_reg[ch], buf, 2)) return false;
 
     uint16_t raw = read_u16(buf);
 
-    /* 32V full scale */
+    // 32V full scale
     *voltage = (raw * 32.0f) / 65536.0f;
 
-    return true;
+    return NO_ERROR;
 }
 
-bool pac19xx_read_sense_voltage(pac19xx_t *dev, int ch, float *voltage){
+i2c_err_t pac19xx_read_sense_voltage(pac19xx_t *dev, int ch, float *voltage)
+{
     if (ch < 0 || ch >= 4)
         return false;
 
     uint8_t buf[2];
-    if (!i2c_read_reg(&dev->i2c, vsense_reg[ch], buf, 2))
-        return false;
+    int wret = i2c_write_blocking(dev->i2c, dev->addr, &vsense_reg[ch], 1, false);
+    if (wret < 0)
+        return WR_ERROR;
+    int rret = i2c_read_blocking(dev->i2c, dev->addr, buf, sizeof(buf), false);
+    if (rret != (int)sizeof(buf))
+        return RD_ERROR_1;
+    // if (!i2c_read_reg(&dev->i2c, vsense_reg[ch], buf, 2)) return false;
 
     int16_t raw = read_s16(buf);
     // ±100 mV full scale
-    *voltage = (raw * 0.1f) / 32768.0f;
-    return true;
+    //*voltage = (raw * 0.1f) / 32768.0f;
+    *voltage = (raw * 0.1f) / 65536.0f;
+    return NO_ERROR;
 }
 
-bool pac19xx_read_current(pac19xx_t *dev, int ch, float *current){
+i2c_err_t pac19xx_read_current(pac19xx_t *dev, int ch, float *current)
+{
     float vsense;
-    if (!pac19xx_read_sense_voltage(dev, ch, &vsense))
+
+    if (pac19xx_read_sense_voltage(dev, ch, &vsense) != NO_ERROR)
         return false;
 
     float r = dev->shunt_resistor[ch];
     if (r <= 0)
-        return false;
+        return RD_ERROR_2;
 
     *current = vsense / r;
-    return true;
+    return NO_ERROR;
 }
 
-bool pac19xx_read_power(pac19xx_t *dev, int ch, float *power){
+i2c_err_t pac19xx_read_power(pac19xx_t *dev, int ch, float *power)
+{
     float vbus;
     float current;
-    if (!pac19xx_read_bus_voltage(dev, ch, &vbus))
-        return false;
+    if (pac19xx_read_bus_voltage(dev, ch, &vbus) != NO_ERROR)
+        return RD_ERROR_2;
 
-    if (!pac19xx_read_current(dev, ch, &current))
-        return false;
+    if (pac19xx_read_current(dev, ch, &current) != NO_ERROR)
+        return RD_ERROR_2;
 
     *power = vbus * current;
-    return true;
+    return NO_ERROR;
 }

@@ -11,13 +11,14 @@
 #include "periph_defs.h"
 #include "mcp9601_hal.h"
 #include "ina228.h"
+#include "pac19xx.h"
 #include "uart_helpers.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 
-#define SAMPLE_PERIOD 2000
+#define SAMPLE_PERIOD 2000 // in microseconds
 /*
 // Data will be copied from src to dst
 const char src[] = "Hello, world! (from DMA)";
@@ -145,6 +146,7 @@ int main()
         //printf("Unable to set configurations for I2C device at 0x67!\n");
         uart_puts(UART_PORT, "Unable to set configurations for I2C device at 0x67!\n");
     }
+
     ina228_t ina_dev1;
     ina_dev1.i2c = I2C_PORT;
     ina_dev1.addr = INA228_I2C_ADDR_DEFAULT;
@@ -169,6 +171,7 @@ int main()
     }
     else
     {
+        bus_voltage = 85.0f - bus_voltage;
         uart_puts(UART_PORT, "INA228 Bus voltage: ");
         uart_fprint(UART_PORT, bus_voltage, 3, '\n');
     }
@@ -182,12 +185,53 @@ int main()
         uart_fprint(UART_PORT, shunt_voltage, 8, '\n');
     }
 
-    sleep_ms(2000);
+    pac19xx_t pac19_dev1;
+    pac19_dev1.i2c = I2C_PORT;
+    pac19_dev1.addr = PAC19XX_DEFAULT_ADDR;
+    pac19_dev1.type = PAC_DEVICE_1954;
+    pac19_dev1.shunt_resistor[0] = PAC19XX_SHUNT_RES;
+    pac19_dev1.shunt_resistor[1] = PAC19XX_SHUNT_RES;
+    pac19_dev1.shunt_resistor[2] = PAC19XX_SHUNT_RES;
+    pac19_dev1.shunt_resistor[3] = PAC19XX_SHUNT_RES;
+    float pac_bus_volt = -1.0f, pac_shunt_volt = -2.0f;
+
+    if (pac19xx_refresh(&pac19_dev1) != NO_ERROR)
+    {
+        uart_puts(UART_PORT, "Unable to refresh PAC19XX device!\n");
+    }
+    sleep_ms(2);
+    if (pac19xx_read_bus_voltage(&pac19_dev1, 0, &pac_bus_volt) != NO_ERROR)
+    {
+        uart_puts(UART_PORT, "Unable to read PAC19XX Bus Voltage!\n");
+    }
+    else
+    {
+        uart_puts(UART_PORT, "Pac19XX Bus Voltage: ");
+        uart_fprint(UART_PORT, pac_bus_volt, 4, '\n');
+    }
+    if (pac19xx_read_sense_voltage(&pac19_dev1, 0, &pac_shunt_volt) != NO_ERROR)
+    {
+        uart_puts(UART_PORT, "Unable to read PAC19XX Shunt Voltage!\n");
+    }
+    else
+    {
+        uart_puts(UART_PORT, "Pac19XX Vsense Voltage: ");
+        uart_fprint(UART_PORT, (float)(pac_shunt_volt / pac19_dev1.shunt_resistor[0]), 8, '\n');
+    }
+    /*
+    if (pac19xx_refresh(&pac19_dev1) != NO_ERROR)
+    {
+        uart_puts(UART_PORT, "Unable to refresh PAC19XX device!\n");
+    }
+    */
+    sleep_ms(10000);
+
     add_alarm_in_us(SAMPLE_PERIOD, alarm_callback, NULL, false);
     xTaskCreate(fsamplingTask, "sampling-Task", 256, NULL, configMAX_PRIORITIES - 1, &sampling_taskHandle);
     // xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
     vTaskStartScheduler();
 
+    // while (1)
     {
         /*
         uint8_t temp_buf[6], tHot_buf[2], tCold_buf[2], tDelta_buf[2];

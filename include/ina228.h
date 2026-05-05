@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include "hardware/i2c.h"
 #include "ina228_reg.h"
-//#include "i2c_if.h"
 #include "common_defs.h"
 
 typedef struct
@@ -17,8 +16,8 @@ typedef struct
 
 } ina228_t;
 
-static int32_t read_s24(uint8_t *buf);
-static uint16_t read_u16(uint8_t *buf);
+static int32_t read_s24(uint8_t *buf, uint8_t resv_bits);
+static uint16_t read_u16(uint8_t *buf, uint8_t resv_bits);
 i2c_err_t ina228_check_available(ina228_t *dev);
 i2c_err_t ina228_init(ina228_t *dev);
 i2c_err_t ina228_set_calibration(ina228_t *dev, float max_current, float shunt_resistor);

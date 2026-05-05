@@ -1,15 +1,18 @@
 #include "ina228.h"
 #include "ina228_reg.h"
 
-static int32_t read_s24(uint8_t *buf){
+static int32_t read_s24(uint8_t *buf, uint8_t resv_bits)
+{
     int32_t val = (buf[0] << 16) | (buf[1] << 8) | buf[2];
+    val = val >> resv_bits;
     // Sign extend
     if (val & 0x800000)
         val |= 0xFF000000;
     return val;
 }
 
-static uint16_t read_u16(uint8_t *buf){
+static uint16_t read_u16(uint8_t *buf, uint8_t resv_bits)
+{
     return (buf[0] << 8) | buf[1];
 }
 
@@ -73,7 +76,7 @@ i2c_err_t ina228_read_bus_voltage(ina228_t *dev, float *voltage){
         return false;
     */
 
-    int32_t raw = read_s24(buf);
+    int32_t raw = read_s24(buf, 4);
 
     // LSB = 195.3125 uV
     *voltage = raw * 0.0001953125f;
@@ -92,7 +95,7 @@ i2c_err_t ina228_read_shunt_voltage(ina228_t *dev, float *voltage){
     if (!i2c_read_reg(&dev->i2c, INA228_REG_SHUNT_VOLT, buf, 3))
         return false;
     */
-    int32_t raw = read_s24(buf);
+    int32_t raw = read_s24(buf, 4);
 
     // LSB = 312.5 nV
     *voltage = raw * 0.0000003125f;
@@ -111,7 +114,7 @@ i2c_err_t ina228_read_current(ina228_t *dev, float *current){
     if (!i2c_read_reg(&dev->i2c, INA228_REG_CURRENT, buf, 3))
         return false;
     */
-    int32_t raw = read_s24(buf);
+    int32_t raw = read_s24(buf, 4);
 
     *current = raw * dev->current_lsb;
 
@@ -129,7 +132,7 @@ i2c_err_t ina228_read_power(ina228_t *dev, float *power){
     if (!i2c_read_reg(&dev->i2c, INA228_REG_POWER, buf, 3))
         return false;
     */
-    int32_t raw = read_s24(buf);
+    int32_t raw = read_s24(buf, 0);
 
     // Power LSB = 3.2 * current_lsb
     *power = raw * (3.2f * dev->current_lsb);

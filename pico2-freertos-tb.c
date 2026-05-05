@@ -130,7 +130,7 @@ int main()
     gpio_init(GPIO_TEST_PIN);
     gpio_set_dir(GPIO_TEST_PIN, GPIO_OUT);
 
-    // check if i2c mcp -device at 0x67 is present
+    // check if i2c mcp-device at 0x67 is present
     uint8_t dev_addr = 0x67, buf[2];
     tcold_res_t cold_res = HIGH_RES;
     adc_res_t adc_res = RES_18B;
@@ -231,7 +231,7 @@ int main()
     // xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
     vTaskStartScheduler();
 
-    // while (1)
+    while (1)
     {
         /*
         uint8_t temp_buf[6], tHot_buf[2], tCold_buf[2], tDelta_buf[2];

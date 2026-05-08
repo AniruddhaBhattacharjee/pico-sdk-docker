@@ -29,7 +29,7 @@ typedef struct
 bool pac19xx_init(pac19xx_t *dev);
 i2c_err_t pac19xx_refresh(pac19xx_t *dev);
 i2c_err_t pac19xx_read_bus_voltage(pac19xx_t *dev, int ch, float *voltage);
-i2c_err_t pac19xx_read_sense_voltage(pac19xx_t *dev, int ch, float *voltage);
+i2c_err_t pac19xx_read_shunt_voltage(pac19xx_t *dev, int ch, float *voltage);
 i2c_err_t pac19xx_read_current(pac19xx_t *dev, int ch, float *current);
 i2c_err_t pac19xx_read_power(pac19xx_t *dev, int ch, float *power);
 

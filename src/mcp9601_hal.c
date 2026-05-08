@@ -37,7 +37,7 @@ uint8_t mcp9601_device_scan(i2c_inst_t* i2c){
     return cnt;
 }
 
-uint8_t mcp9601_set_device_config(i2c_inst_t* i2c, uint8_t addr, tcold_res_t tcoldres, adc_res_t adcres){
+uint8_t mcp9601_set_device_config(mcp9601_t *dev, tcold_res_t tcoldres, adc_res_t adcres){
     // form the device config register settings byte
     uint8_t reg_value = 0x00;
     reg_value |= (tcoldres << MCP9601_TC_RES_SET_BIT) | (adcres << MCP9601_ADC_RES_SET_BIT);
@@ -46,7 +46,7 @@ uint8_t mcp9601_set_device_config(i2c_inst_t* i2c, uint8_t addr, tcold_res_t tco
     uint8_t buf[2];
     buf[0] = wreg;
     buf[1] = reg_value;
-    int wret = i2c_write_blocking(i2c, addr, buf, sizeof(buf), false);
+    int wret = i2c_write_blocking(dev->i2c, dev->addr, buf, sizeof(buf), false);
     return (wret >= 0);
 }
 
@@ -58,16 +58,16 @@ uint8_t mcp9601_set_device_config(i2c_inst_t* i2c, uint8_t addr, tcold_res_t tco
  * @param buf Pointer to array or variable capable of holding 2 bytes (uint8_t[2], uint16_t, etc.)
  * @return Number of bytes read if read is successful, otherwise Number 0.
  */
-i2c_err_t mcp9601_read_tCold_reg(i2c_inst_t* i2c, uint8_t addr, uint8_t* buf, size_t buflen){
+i2c_err_t mcp9601_read_tCold_reg(mcp9601_t *dev, uint8_t* buf, size_t buflen){
     // write the command to the device....
     if (sizeof(buf) != 2 && buflen != 2){
         return ARG_ERROR; 
     }
     uint8_t reg = MCP9601_TC_TEMP_REG;
-    int wret = i2c_write_blocking(i2c, addr, &reg, 1, false);
+    int wret = i2c_write_blocking(dev->i2c, dev->addr, &reg, 1, false);
     if(wret < 0) return WR_ERROR;
 
-    int rret = i2c_read_blocking(i2c, addr, buf, buflen, false);
+    int rret = i2c_read_blocking(dev->i2c, dev->addr, buf, buflen, false);
     return (rret == (int)buflen ? NO_ERROR : RD_ERROR_1);
 }
 
@@ -79,18 +79,18 @@ i2c_err_t mcp9601_read_tCold_reg(i2c_inst_t* i2c, uint8_t addr, uint8_t* buf, si
  * @param buf Pointer to array or variable capable of holding 2 bytes (uint8_t[2], uint16_t, etc.)
  * @return Number of bytes read if read is successful, otherwise 0.
  */
-i2c_err_t mcp9601_read_tHot_reg(i2c_inst_t* i2c, uint8_t addr, uint8_t* buf, size_t buflen){
+i2c_err_t mcp9601_read_tHot_reg(mcp9601_t *dev, uint8_t* buf, size_t buflen){
     if (sizeof(buf) != 2 && buflen != 2){
         return ARG_ERROR; 
     }
     uint8_t reg = MCP9601_TH_TEMP_REG;
-    int wret = i2c_write_blocking(i2c, addr, &reg, 1, false);
+    int wret = i2c_write_blocking(dev->i2c, dev->addr, &reg, 1, false);
     if(wret < 0) return WR_ERROR;
     
     //if (wr_sleep_ms) sleep_ms(wr_sleep_ms);
 
     // Now, read data from the sensor
-    int rret = i2c_read_blocking(i2c, addr, buf, buflen, false);
+    int rret = i2c_read_blocking(dev->i2c, dev->addr, buf, buflen, false);
     return (rret == (int)buflen ? NO_ERROR : RD_ERROR_1);
 }
 
@@ -102,18 +102,18 @@ i2c_err_t mcp9601_read_tHot_reg(i2c_inst_t* i2c, uint8_t addr, uint8_t* buf, siz
  * @param buf Pointer to array or variable capable of holding 2 bytes (uint8_t[2], uint16_t, etc.)
  * @return Number of bytes read if read is successful, otherwise 0.
  */
-i2c_err_t mcp9601_read_tDelta_reg(i2c_inst_t* i2c, uint8_t addr, uint8_t* buf, size_t buflen){
+i2c_err_t mcp9601_read_tDelta_reg(mcp9601_t *dev, uint8_t* buf, size_t buflen){
     if (sizeof(buf) != 2 && buflen != 2){
         return ARG_ERROR; 
     }
     uint8_t reg = MCP9601_TD_TEMP_REG;
-    int wret = i2c_write_blocking(i2c, addr, &reg, 1, false);
+    int wret = i2c_write_blocking(dev->i2c, dev->addr, &reg, 1, false);
     if(wret < 0) return WR_ERROR;
     
     //if (wr_sleep_ms) sleep_ms(wr_sleep_ms);
 
     // Now, read data from the sensor
-    int rret = i2c_read_blocking(i2c, addr, buf, buflen, false);
+    int rret = i2c_read_blocking(dev->i2c, dev->addr, buf, buflen, false);
     return (rret == (int)buflen ? NO_ERROR : RD_ERROR_1);
 }
 
@@ -126,14 +126,14 @@ i2c_err_t mcp9601_read_tDelta_reg(i2c_inst_t* i2c, uint8_t addr, uint8_t* buf, s
  * @param buflen size of buf param
  * @return NO_ERROR (mcp_i2_err_t type) if successful, otherwise an X_ERROR_N value.  
  */
-i2c_err_t mcp9601_read_alltemp_reg(i2c_inst_t* i2c, uint8_t addr, uint8_t* buf, size_t buflen){
+i2c_err_t mcp9601_read_alltemp_reg(mcp9601_t *dev, uint8_t* buf, size_t buflen){
     if (sizeof(buf) != 6 && buflen != 6){
         return ARG_ERROR; 
     }
     uint8_t reg = MCP9601_TH_TEMP_REG;
-    int wret = i2c_write_blocking(i2c, addr, &reg, 1, false);
+    int wret = i2c_write_blocking(dev->i2c, dev->addr, &reg, 1, false);
     if(wret < 0) return WR_ERROR;
-    int rret = i2c_read_blocking(i2c, addr, buf, buflen, false);
+    int rret = i2c_read_blocking(dev->i2c, dev->addr, buf, buflen, false);
     return (rret == (int)buflen ? NO_ERROR : RD_ERROR_1);
 }
 

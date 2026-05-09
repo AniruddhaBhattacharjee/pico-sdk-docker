@@ -81,6 +81,10 @@ void fsamplingTask(void *arg){
     for(;;){
         xTaskNotifyWait(0, UINT32_MAX, &notify, portMAX_DELAY);
         xTaskNotify(mcp_rtemp_all_taskHandle, 0x01, eSetBits);
+        xTaskNotify(pac_vread_taskHandle, 0x01, eSetBits);
+        xTaskNotify(ina_vread_taskHandle, 0x01, eSetBits);
+        vTaskDelay(pdMS_TO_TICKS(1));
+        xTaskNotify(uart_transmit_taskHandle, 0x01, eSetBits);
     }
 }
 
@@ -147,7 +151,8 @@ void fmcp_rtemp_hc_task(void *arg){
     }
 }
 
-void fpac19VoltReadTask(){
+void fpac19VoltReadTask(void *arg)
+{
     uint32_t notify;
     uint8_t channel = 0;
     float busVolt = 0.0f, shuntVolt = 0.0f;
@@ -169,7 +174,8 @@ void fpac19VoltReadTask(){
     }
 }
 
-void finaVoltReadTask(){
+void finaVoltReadTask(void *arg)
+{
     uint32_t notify;
     uint8_t channel;
     float busVolt = 0.0f, shuntVolt = 0.0f;
@@ -188,8 +194,13 @@ void finaVoltReadTask(){
     }
 }
 
-void fuartTransmitTask(){
-    for(;;){
+void fuartTransmitTask(void *arg)
+{
+    uint32_t notify;
+    for (;;)
+    {
+        xTaskNotifyWait(0, UINT32_MAX, &notify, portMAX_DELAY);
+
         xSemaphoreTake(mcpState_mutex, portMAX_DELAY);
         uart_fprint(UART_PORT, mcp9601Data.tempHot[0], 3, ',');
         uart_fprint(UART_PORT, mcp9601Data.tempCold[0], 3, ',');
@@ -202,10 +213,11 @@ void fuartTransmitTask(){
 
         xSemaphoreTake(inaState_mutex, portMAX_DELAY);
         uart_fprint(UART_PORT, ina228Data.bus_volt[0], 3, ',');
-        uart_fprint(UART_PORT, ina228Data.shunt_volt[0], 6, ',');
+        uart_fprint(UART_PORT, ina228Data.shunt_volt[0], 6, '\n');
         xSemaphoreGive(inaState_mutex);
     }
 }
+
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xTaskNotifyFromISR(
@@ -239,22 +251,27 @@ int main(){
     gpio_init(GPIO_TEST_PIN);
     gpio_set_dir(GPIO_TEST_PIN, GPIO_OUT);
 
+    pacState_mutex = xSemaphoreCreateMutex();
+    mcpState_mutex = xSemaphoreCreateMutex();
+    inaState_mutex = xSemaphoreCreateMutex();
+
     initializeData();
 
     // check if i2c mcp-device at 0x67 is present
     uint8_t dev_addr = 0x67, buf[2];
     tcold_res_t cold_res = HIGH_RES;
     adc_res_t adc_res = RES_18B;
-    uint8_t *rxdata;
+    uint8_t rxdata;
     mcp_dev1.i2c = I2C_PORT;
     mcp_dev1.addr = 0x67;
     float tcold_temp = -1.0;
     char stemp[32] = {0};
-    if(mcp9601_check_available(I2C_PORT, dev_addr, rxdata)){
+    if (mcp9601_check_available(I2C_PORT, dev_addr, &rxdata))
+    {
         // printf("I2C device found at 0x15 67.\n");
         uart_puts(UART_PORT, "I2C device found at 0x67\n");
     }
-    
+
     if(!(mcp9601_set_device_config(&mcp_dev1, cold_res, adc_res))){
         //printf("Unable to set configurations for I2C device at 0x67!\n");
         uart_puts(UART_PORT, "Unable to set configurations for I2C device at 0x67!\n");
@@ -339,14 +356,14 @@ int main(){
 
     add_alarm_in_us(SAMPLE_PERIOD, alarm_callback, NULL, false);
     xTaskCreate(fsamplingTask, "sampling-Task", 256, NULL, configMAX_PRIORITIES - 1, &sampling_taskHandle);
-    xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 700, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
-    xTaskCreate(fpac19VoltReadTask, "pac-i2c-rv-task", 700, NULL, configMAX_PRIORITIES - 1, &pac_vread_taskHandle);
-    xTaskCreate(finaVoltReadTask, "ina-i2c-rv-task", 700, NULL, configMAX_PRIORITIES - 1, &ina_vread_taskHandle);
-    xTaskCreate(fuartTransmitTask, "ina-i2c-rv-task", 700, NULL, configMAX_PRIORITIES - 1, &uart_transmit_taskHandle);
+    xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
+    xTaskCreate(fpac19VoltReadTask, "pac-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &pac_vread_taskHandle);
+    xTaskCreate(finaVoltReadTask, "ina-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &ina_vread_taskHandle);
+    xTaskCreate(fuartTransmitTask, "ina-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &uart_transmit_taskHandle);
     vTaskStartScheduler();
 
-    while (1)
-    {    }
+    // while (1)
+    //{    }
 
     return 0;
 }

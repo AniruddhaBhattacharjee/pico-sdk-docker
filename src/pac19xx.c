@@ -102,7 +102,7 @@ i2c_err_t pac19xx_read_current(pac19xx_t *dev, int ch, float *current)
 {
     float vsense;
 
-    if (pac19xx_read_sense_voltage(dev, ch, &vsense) != NO_ERROR)
+    if (pac19xx_read_shunt_voltage(dev, ch, &vsense) != NO_ERROR)
         return false;
 
     float r = dev->shunt_resistor[ch];

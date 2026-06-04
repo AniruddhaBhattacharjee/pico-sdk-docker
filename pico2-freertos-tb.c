@@ -20,7 +20,7 @@
 #include "queue.h"
 #include "semphr.h"
 
-#define SAMPLE_PERIOD 2000 // in microseconds
+#define SAMPLE_PERIOD 4000 // in microseconds
 /*
 // Data will be copied from src to dst
 const char src[] = "Hello, world! (from DMA)";
@@ -81,8 +81,8 @@ void fsamplingTask(void *arg){
     for(;;){
         xTaskNotifyWait(0, UINT32_MAX, &notify, portMAX_DELAY);
         xTaskNotify(mcp_rtemp_all_taskHandle, 0x01, eSetBits);
-        xTaskNotify(pac_vread_taskHandle, 0x01, eSetBits);
-        xTaskNotify(ina_vread_taskHandle, 0x01, eSetBits);
+        // xTaskNotify(pac_vread_taskHandle, 0x01, eSetBits);
+        // xTaskNotify(ina_vread_taskHandle, 0x01, eSetBits);
         vTaskDelay(pdMS_TO_TICKS(1));
         xTaskNotify(uart_transmit_taskHandle, 0x01, eSetBits);
     }
@@ -203,9 +203,9 @@ void fuartTransmitTask(void *arg)
 
         xSemaphoreTake(mcpState_mutex, portMAX_DELAY);
         uart_fprint(UART_PORT, mcp9601Data.tempHot[0], 3, ',');
-        uart_fprint(UART_PORT, mcp9601Data.tempCold[0], 3, ',');
+        uart_fprint(UART_PORT, mcp9601Data.tempCold[0], 3, '\n');
         xSemaphoreGive(mcpState_mutex);
-
+        /*
         xSemaphoreTake(pacState_mutex, portMAX_DELAY);
         uart_fprint(UART_PORT, pac1954Data.bus_volt[0], 3, ',');
         uart_fprint(UART_PORT, pac1954Data.shunt_volt[0], 6, ',');
@@ -215,6 +215,7 @@ void fuartTransmitTask(void *arg)
         uart_fprint(UART_PORT, ina228Data.bus_volt[0], 3, ',');
         uart_fprint(UART_PORT, ina228Data.shunt_volt[0], 6, '\n');
         xSemaphoreGive(inaState_mutex);
+        */
     }
 }
 
@@ -280,6 +281,7 @@ int main(){
     ina_dev1.i2c = I2C_PORT;
     ina_dev1.addr = INA228_I2C_ADDR_DEFAULT;
     float bus_voltage = -1.0f, shunt_voltage = -2.0f;
+    /*
     if (ina228_check_available(&ina_dev1) == NO_ERROR)
     {
         uart_puts(UART_PORT, "INA228 Device found at default addr\n");
@@ -313,6 +315,7 @@ int main(){
         uart_puts(UART_PORT, "INA228 Shunt voltage: ");
         uart_fprint(UART_PORT, shunt_voltage, 8, '\n');
     }
+    */
 
     pac19_dev1.i2c = I2C_PORT;
     pac19_dev1.addr = PAC19XX_DEFAULT_ADDR;
@@ -322,7 +325,7 @@ int main(){
     pac19_dev1.shunt_resistor[2] = PAC19XX_SHUNT_RES;
     pac19_dev1.shunt_resistor[3] = PAC19XX_SHUNT_RES;
     float pac_bus_volt = -1.0f, pac_shunt_volt = -2.0f;
-
+    /*
     if (pac19xx_refresh(&pac19_dev1) != NO_ERROR)
     {
         uart_puts(UART_PORT, "Unable to refresh PAC19XX device!\n");
@@ -357,9 +360,9 @@ int main(){
     add_alarm_in_us(SAMPLE_PERIOD, alarm_callback, NULL, false);
     xTaskCreate(fsamplingTask, "sampling-Task", 256, NULL, configMAX_PRIORITIES - 1, &sampling_taskHandle);
     xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
-    xTaskCreate(fpac19VoltReadTask, "pac-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &pac_vread_taskHandle);
-    xTaskCreate(finaVoltReadTask, "ina-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &ina_vread_taskHandle);
-    xTaskCreate(fuartTransmitTask, "ina-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &uart_transmit_taskHandle);
+    // xTaskCreate(fpac19VoltReadTask, "pac-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &pac_vread_taskHandle);
+    // xTaskCreate(finaVoltReadTask, "ina-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &ina_vread_taskHandle);
+    xTaskCreate(fuartTransmitTask, "uart-rxtx-task", 768, NULL, configMAX_PRIORITIES - 1, &uart_transmit_taskHandle);
     vTaskStartScheduler();
 
     // while (1)

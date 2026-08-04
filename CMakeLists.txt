@@ -39,7 +39,7 @@ if (TARGET tinyusb_device)
     message("With TinuUSB build...")
     # Add executable. Default name is the project name, version 0.1
 
-    add_executable(pico2-freertos-tb pico2-freertos-tb.c src/mcp9601_hal.c src/uart_helpers.c src/ina228.c src/pac19xx.c)
+    add_executable(pico2-freertos-tb pico2-freertos-tb.c src/mcp9601_hal.c src/uart_helpers.c src/ina228.c src/pac19xx.c src/lps28dfw.c)
 
     pico_set_program_name(pico2-freertos-tb "pico2-freertos-tb")
     pico_set_program_version(pico2-freertos-tb "0.1")

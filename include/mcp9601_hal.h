@@ -34,6 +34,12 @@ typedef enum {
 } mcp_i2c_err_t;
 */
 
+typedef struct {
+    uint8_t index;
+    float tempHot[MCP960X_DATA_NUM];
+    float tempCold[MCP960X_DATA_NUM];
+} mcp960xData_t;
+
 uint8_t mcp9601_check_available(i2c_inst_t* i2c, uint8_t addr, uint8_t* rxdata);
 uint8_t mcp9601_device_scan(i2c_inst_t* i2c);
 uint8_t mcp9601_set_device_config(mcp9601_t *dev, tcold_res_t tcoldres, adc_res_t adcres);

@@ -13,8 +13,13 @@ typedef struct
     uint8_t addr;
     float shunt_resistor;
     float current_lsb;// A per bit(calibration)
-
+    uint8_t data_index;
 } ina228_t;
+
+typedef struct {
+    float bus_volt[INA228_DATA_NUM];
+    float shunt_volt[INA228_DATA_NUM];
+} ina228Data_t;
 
 static int32_t read_s24(uint8_t *buf, uint8_t resv_bits);
 static uint16_t read_u16(uint8_t *buf, uint8_t resv_bits);

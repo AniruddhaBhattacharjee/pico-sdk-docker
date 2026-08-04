@@ -1,8 +1,7 @@
 #include "ina228.h"
 #include "ina228_reg.h"
 
-static int32_t read_s24(uint8_t *buf, uint8_t resv_bits)
-{
+static int32_t read_s24(uint8_t *buf, uint8_t resv_bits){
     int32_t val = (buf[0] << 16) | (buf[1] << 8) | buf[2];
     val = val >> resv_bits;
     // Sign extend
@@ -11,21 +10,17 @@ static int32_t read_s24(uint8_t *buf, uint8_t resv_bits)
     return val;
 }
 
-static uint16_t read_u16(uint8_t *buf, uint8_t resv_bits)
-{
+static uint16_t read_u16(uint8_t *buf, uint8_t resv_bits){
     return (buf[0] << 8) | buf[1];
 }
 
-i2c_err_t ina228_check_available(ina228_t *dev)
-{
+i2c_err_t ina228_check_available(ina228_t *dev){
     uint8_t *rxdata;
     int ret = i2c_read_blocking(dev->i2c, dev->addr, rxdata, 1, false);
-    if (ret < 0)
-    {
+    if (ret < 0){
         return RD_ERROR_1;
     }
-    else
-    {
+    else{
         return NO_ERROR;
     }
 }

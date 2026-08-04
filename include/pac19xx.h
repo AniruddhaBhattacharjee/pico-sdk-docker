@@ -17,14 +17,17 @@ typedef enum
     PAC_DEVICE_1954
 } pac19xx_device_type_t;
 
-typedef struct
-{
+typedef struct{
     i2c_inst_t *i2c;
     uint8_t addr;
     pac19xx_device_type_t type;
     float shunt_resistor[PAC19XX_NUM_CHANNELS];
-
 } pac19xx_t;
+
+typedef struct {
+    float bus_volt[PAC19XX_DATA_NUM];
+    float shunt_volt[PAC19XX_DATA_NUM];
+} pac19xxData_t;
 
 bool pac19xx_init(pac19xx_t *dev);
 i2c_err_t pac19xx_refresh(pac19xx_t *dev);

@@ -14,6 +14,7 @@
 #include "ina228.h"
 #include "pac19xx.h"
 #include "uart_helpers.h"
+#include "lps28dfw.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -39,20 +40,24 @@ static TaskHandle_t mcp_rtemp_hc_taskHandle;
 static TaskHandle_t ina_vread_taskHandle;
 static TaskHandle_t pac_vread_taskHandle;
 static TaskHandle_t uart_transmit_taskHandle;
+static TaskHandle_t lps28_read_taskHandle;
 // Freertos Semaphore
 static SemaphoreHandle_t pacState_mutex;
 static SemaphoreHandle_t mcpState_mutex;
 static SemaphoreHandle_t inaState_mutex;
+static SemaphoreHandle_t lpsState_mutex;
 
 // declare sensor data objects
 mcp960xData_t mcp9601Data;
 pac19xxData_t pac1954Data;
 ina228Data_t ina228Data;
+lps28dfwData_t lps28Data;
 
 // declare sensor device structs
 mcp9601_t mcp_dev1;
 pac19xx_t pac19_dev1;
 ina228_t ina_dev1;
+lps28dfw_t lps_dev1;
 
 // setup functions
 void initializeData(){
@@ -62,15 +67,20 @@ void initializeData(){
         mcp9601Data.tempCold[i] = 0.0f;
         mcp9601Data.tempHot[i] = 0.0f;
     }
-    ina228Data.index = 0;
+
     for (i = 0; i < INA228_DATA_NUM; ++i){
         ina228Data.bus_volt[i] = 0.0f;
         ina228Data.shunt_volt[i] = 0.0f;
     }
-    pac1954Data.index = 0;
+    
     for (i = 0; i < PAC19XX_DATA_NUM; ++i){
         pac1954Data.bus_volt[i] = 0.0f;
         pac1954Data.shunt_volt[i] = 0.0f;
+    }
+
+    for (i = 0; i < LPS28DFW_DATA_NUM; ++i){
+        lps28Data.pressure[i] = 0.0f;
+        lps28Data.temperature[i] = 0.0f;
     }
     return;
 }
@@ -117,6 +127,20 @@ void fmcp_rtemp_all_task(void *arg){
         xSemaphoreGive(mcpState_mutex);
         //uart_fprint(UART_PORT, THot, 3, ',');
         //uart_fprint(UART_PORT, TCold, 3, '\n');
+    }
+}
+void flps28ReadTask(void *arg){
+    uint32_t notify;
+    float pressure, temperature;
+    for (;;){
+        xTaskNotifyWait(0, UINT32_MAX, &notify, portMAX_DELAY);
+
+        if (lps28dfw_read_all(&lps_dev1, &pressure, &temperature) == NO_ERROR){
+            xSemaphoreTake(lpsState_mutex, portMAX_DELAY);
+            lps28Data.pressure[0] = pressure;
+            lps28Data.temperature[0] = temperature;
+            xSemaphoreGive(lpsState_mutex);
+        }
     }
 }
 
@@ -200,11 +224,12 @@ void fuartTransmitTask(void *arg)
     for (;;)
     {
         xTaskNotifyWait(0, UINT32_MAX, &notify, portMAX_DELAY);
-
+        /*
         xSemaphoreTake(mcpState_mutex, portMAX_DELAY);
         uart_fprint(UART_PORT, mcp9601Data.tempHot[0], 3, ',');
         uart_fprint(UART_PORT, mcp9601Data.tempCold[0], 3, '\n');
         xSemaphoreGive(mcpState_mutex);
+        */
         /*
         xSemaphoreTake(pacState_mutex, portMAX_DELAY);
         uart_fprint(UART_PORT, pac1954Data.bus_volt[0], 3, ',');
@@ -216,6 +241,10 @@ void fuartTransmitTask(void *arg)
         uart_fprint(UART_PORT, ina228Data.shunt_volt[0], 6, '\n');
         xSemaphoreGive(inaState_mutex);
         */
+        xSemaphoreTake(lpsState_mutex, portMAX_DELAY);
+        uart_fprint(UART_PORT, lps28Data.pressure[0], 3, ',');
+        uart_fprint(UART_PORT, lps28Data.temperature[0], 3, '\n');
+        xSemaphoreGive(lpsState_mutex);
     }
 }
 
@@ -255,32 +284,34 @@ int main(){
     pacState_mutex = xSemaphoreCreateMutex();
     mcpState_mutex = xSemaphoreCreateMutex();
     inaState_mutex = xSemaphoreCreateMutex();
+    lpsState_mutex = xSemaphoreCreateMutex();
 
     initializeData();
 
     // check if i2c mcp-device at 0x67 is present
-    uint8_t dev_addr = 0x67, buf[2];
-    tcold_res_t cold_res = HIGH_RES;
-    adc_res_t adc_res = RES_18B;
-    uint8_t rxdata;
-    mcp_dev1.i2c = I2C_PORT;
-    mcp_dev1.addr = 0x67;
-    float tcold_temp = -1.0;
-    char stemp[32] = {0};
-    if (mcp9601_check_available(I2C_PORT, dev_addr, &rxdata))
-    {
-        // printf("I2C device found at 0x15 67.\n");
-        uart_puts(UART_PORT, "I2C device found at 0x67\n");
-    }
-
-    if(!(mcp9601_set_device_config(&mcp_dev1, cold_res, adc_res))){
-        //printf("Unable to set configurations for I2C device at 0x67!\n");
-        uart_puts(UART_PORT, "Unable to set configurations for I2C device at 0x67!\n");
-    }
-
-    ina_dev1.i2c = I2C_PORT;
-    ina_dev1.addr = INA228_I2C_ADDR_DEFAULT;
-    float bus_voltage = -1.0f, shunt_voltage = -2.0f;
+    
+    //uint8_t dev_addr = 0x67, buf[2];
+    //tcold_res_t cold_res = HIGH_RES;
+    //adc_res_t adc_res = RES_18B;
+    //uint8_t rxdata;
+    //mcp_dev1.i2c = I2C_PORT;
+    //mcp_dev1.addr = 0x67;
+    //float tcold_temp = -1.0;
+    //char stemp[32] = {0};
+    //if (mcp9601_check_available(I2C_PORT, dev_addr, &rxdata))
+    //{
+    //    // printf("I2C device found at 0x15 67.\n");
+    //    uart_puts(UART_PORT, "I2C device found at 0x67\n");
+    //}
+//
+    //if(!(mcp9601_set_device_config(&mcp_dev1, cold_res, adc_res))){
+    //    //printf("Unable to set configurations for I2C device at 0x67!\n");
+    //    uart_puts(UART_PORT, "Unable to set configurations for I2C device at 0x67!\n");
+    //}
+//
+    //ina_dev1.i2c = I2C_PORT;
+    //ina_dev1.addr = INA228_I2C_ADDR_DEFAULT;
+    //float bus_voltage = -1.0f, shunt_voltage = -2.0f;
     /*
     if (ina228_check_available(&ina_dev1) == NO_ERROR)
     {
@@ -316,15 +347,15 @@ int main(){
         uart_fprint(UART_PORT, shunt_voltage, 8, '\n');
     }
     */
-
-    pac19_dev1.i2c = I2C_PORT;
-    pac19_dev1.addr = PAC19XX_DEFAULT_ADDR;
-    pac19_dev1.type = PAC_DEVICE_1954;
-    pac19_dev1.shunt_resistor[0] = PAC19XX_SHUNT_RES;
-    pac19_dev1.shunt_resistor[1] = PAC19XX_SHUNT_RES;
-    pac19_dev1.shunt_resistor[2] = PAC19XX_SHUNT_RES;
-    pac19_dev1.shunt_resistor[3] = PAC19XX_SHUNT_RES;
-    float pac_bus_volt = -1.0f, pac_shunt_volt = -2.0f;
+    
+    //pac19_dev1.i2c = I2C_PORT;
+    //pac19_dev1.addr = PAC19XX_DEFAULT_ADDR;
+    //pac19_dev1.type = PAC_DEVICE_1954;
+    //pac19_dev1.shunt_resistor[0] = PAC19XX_SHUNT_RES;
+    //pac19_dev1.shunt_resistor[1] = PAC19XX_SHUNT_RES;
+    //pac19_dev1.shunt_resistor[2] = PAC19XX_SHUNT_RES;
+    //pac19_dev1.shunt_resistor[3] = PAC19XX_SHUNT_RES;
+    //float pac_bus_volt = -1.0f, pac_shunt_volt = -2.0f;
     /*
     if (pac19xx_refresh(&pac19_dev1) != NO_ERROR)
     {
@@ -355,11 +386,39 @@ int main(){
         uart_puts(UART_PORT, "Unable to refresh PAC19XX device!\n");
     }
     */
-    sleep_ms(10000);
+    lps28dfw_t lps_dev1;
+
+    lps_dev1.i2c = I2C_PORT;
+    lps_dev1.addr = LPS28DFW_I2C_ADDR_LOW;
+
+    if (lps28dfw_check_available(&lps_dev1) != NO_ERROR){
+        uart_puts(UART_PORT, "LPS28DFW not detected!\n");
+    }
+
+    if (lps28dfw_soft_reset(&lps_dev1) != NO_ERROR){
+        uart_puts(UART_PORT, "Reset failed!\n");
+    }
+
+    lps28dfw_config_t cfg = {
+        .odr            = LPS28DFW_ODR_25HZ,
+        .lpf            = LPS28DFW_LPF_ODR_DIV4,
+        .enable_bdu     = true,
+        .auto_increment = true
+    };
+
+    if (lps28dfw_set_config(&lps_dev1, &cfg) != NO_ERROR){
+        uart_puts(UART_PORT, "Configuration failed!\n");
+    }
+
+    while (!lps28dfw_pressure_ready(&lps_dev1)){
+        tight_loop_contents();
+    }
+    sleep_ms(1000);
 
     add_alarm_in_us(SAMPLE_PERIOD, alarm_callback, NULL, false);
     xTaskCreate(fsamplingTask, "sampling-Task", 256, NULL, configMAX_PRIORITIES - 1, &sampling_taskHandle);
-    xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
+    //xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
+    xTaskCreate(flps28ReadTask, "lps28-i2c-read-task", 768, NULL, configMAX_PRIORITIES - 1, &lps28_read_taskHandle);
     // xTaskCreate(fpac19VoltReadTask, "pac-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &pac_vread_taskHandle);
     // xTaskCreate(finaVoltReadTask, "ina-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &ina_vread_taskHandle);
     xTaskCreate(fuartTransmitTask, "uart-rxtx-task", 768, NULL, configMAX_PRIORITIES - 1, &uart_transmit_taskHandle);

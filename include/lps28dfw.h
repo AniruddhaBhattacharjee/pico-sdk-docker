@@ -50,10 +50,11 @@ typedef struct
     lps28dfw_lpf_t lpf;
     bool enable_bdu;
     bool auto_increment;
+    uint8_t fs_mode;
 } lps28dfw_config_t;
 
 /******************************************************************************
- * Public API
+ * Configuration and Setting Functions: Public Functions
  ******************************************************************************/
 
 /* Device */
@@ -63,8 +64,8 @@ i2c_err_t lps28dfw_init(lps28dfw_t *dev);
 i2c_err_t lps28dfw_soft_reset(lps28dfw_t *dev);
 i2c_err_t lps28dfw_set_config(lps28dfw_t *dev,const lps28dfw_config_t *cfg);
 i2c_err_t lps28dfw_set_odr(lps28dfw_t *dev,lps28dfw_odr_t odr);
-int lps28dfw_enable_lowpass(lps28dfw_t *dev,lps28dfw_lpf_t mode);
-
+i2c_err_t lps28dfw_enable_lowpass(lps28dfw_t *dev,lps28dfw_lpf_t mode);
+i2c_err_t lps28dfw_set_fs_mode(lps28dfw_t *dev, lps28dfw_fs_mode_t mode);
 /******************************************************************************
  * Register Access
  ******************************************************************************/

@@ -39,6 +39,8 @@ extern "C" {
 #define LPS28DFW_CTRL_REG2                0x11
 #define LPS28DFW_CTRL_REG3                0x12
 
+#define LPS28DFW_CTRL_REG1_FS_MODE      (1 << 4)
+
 #define LPS28DFW_FIFO_CTRL                0x14
 
 #define LPS28DFW_REF_P_XL                 0x15
@@ -141,6 +143,13 @@ typedef enum
     LPS28DFW_LPF_ODR_DIV20
 
 } lps28dfw_lpf_t;
+
+typedef enum
+{
+    LPS28DFW_FS_MODE_1260 = 0,
+    LPS28DFW_FS_MODE_4060 = 1
+
+} lps28dfw_fs_mode_t;
 
 #ifdef __cplusplus
 }

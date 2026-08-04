@@ -138,7 +138,7 @@ i2c_err_t lps28dfw_set_odr(lps28dfw_t *dev, lps28dfw_odr_t odr){
  * Low Pass Filter
  ******************************************************************************/
 
-int lps28dfw_enable_lowpass(lps28dfw_t *dev, lps28dfw_lpf_t mode){
+i2c_err_t lps28dfw_enable_lowpass(lps28dfw_t *dev, lps28dfw_lpf_t mode){
     uint8_t ctrl1;
     if (lps28dfw_read_reg(dev, LPS28DFW_CTRL_REG1, &ctrl1, 1) != NO_ERROR){
         return RD_ERROR_1;
@@ -176,6 +176,9 @@ i2c_err_t lps28dfw_set_config(lps28dfw_t *dev, const lps28dfw_config_t *cfg){
         return OTHR_ERROR;
     }
 
+    if (lps28dfw_set_fs_mode(dev, cfg->fs_mode)!=NO_ERROR){
+        return WR_ERROR
+    }
     return NO_ERROR;
 }
 
@@ -385,4 +388,24 @@ int lps28dfw_fifo_get_level(lps28dfw_t *dev,uint8_t *level){
 
 int lps28dfw_fifo_read_sample(lps28dfw_t *dev,float *pressure, float *temperature){
     return lps28dfw_read_all(dev,pressure,temperature);
+}
+
+i2c_err_t lps28dfw_set_fs_mode(lps28dfw_t *dev, lps28dfw_fs_mode_t mode){
+    uint8_t ctrl1;
+    if (dev == NULL)
+        return ARG_ERROR;
+
+    if (lps28dfw_read_reg(dev, LPS28DFW_CTRL_REG1, &ctrl1, 1) != NO_ERROR){
+        return RD_ERROR_1;
+    }
+
+    // Clear FS_MODE bit
+    ctrl1 &= ~LPS28DFW_CTRL_REG1_FS_MODE;
+
+    // Set requested mode
+    if (mode == LPS28DFW_FS_MODE_4060){
+        ctrl1 |= LPS28DFW_CTRL_REG1_FS_MODE;
+    }
+
+    return lps28dfw_write_reg(dev, LPS28DFW_CTRL_REG1, ctrl1);
 }

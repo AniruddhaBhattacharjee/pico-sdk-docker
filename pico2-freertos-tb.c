@@ -386,7 +386,6 @@ int main(){
         uart_puts(UART_PORT, "Unable to refresh PAC19XX device!\n");
     }
     */
-    lps28dfw_t lps_dev1;
 
     lps_dev1.i2c = I2C_PORT;
     lps_dev1.addr = LPS28DFW_I2C_ADDR_LOW;

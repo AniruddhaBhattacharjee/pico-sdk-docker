@@ -85,14 +85,14 @@ i2c_err_t lps28dfw_read_raw(lps28dfw_t *dev,int32_t *raw_pressure,int16_t *raw_t
  * Floating Point Measurements
  ******************************************************************************/
 
-i2c_err_t lps28dfw_read_pressure(lps28dfw_t *dev,float *pressure_hpa);
+i2c_err_t lps28dfw_read_pressure(lps28dfw_t *dev,float *pressure_hpa, lps28dfw_fs_mode_t mode);
 i2c_err_t lps28dfw_read_temperature(lps28dfw_t *dev,float *temperature_c);
-i2c_err_t lps28dfw_read_all(lps28dfw_t *dev,float *pressure_hpa,float *temperature_c);
+i2c_err_t lps28dfw_read_all(lps28dfw_t *dev,float *pressure_hpa,float *temperature_c, lps28dfw_fs_mode_t mode);
 /******************************************************************************
  * Conversion Helpers
  ******************************************************************************/
 
-float lps28dfw_convert_pressure(int32_t raw_pressure);
+float lps28dfw_convert_pressure(int32_t raw_pressure, lps28dfw_fs_mode_t mode);
 float lps28dfw_convert_temperature(int16_t raw_temperature);
 
 /******************************************************************************
@@ -101,7 +101,7 @@ float lps28dfw_convert_temperature(int16_t raw_temperature);
 
 i2c_err_t lps28dfw_fifo_set_mode(lps28dfw_t *dev, lps28dfw_fifo_mode_t mode);
 int lps28dfw_fifo_get_level(lps28dfw_t *dev,uint8_t *level);
-int lps28dfw_fifo_read_sample(lps28dfw_t *dev,float *pressure,float *temperature);
+int lps28dfw_fifo_read_sample(lps28dfw_t *dev,float *pressure,float *temperature, lps28dfw_fs_mode_t mode);
 /******************************************************************************
  * Status
  ******************************************************************************/
@@ -114,8 +114,8 @@ bool lps28dfw_temperature_ready(lps28dfw_t *dev);
  * Internal Helpers
  * Used only by lps28dfw.c
  ******************************************************************************/
-int lps28dfw_read_reg(lps28dfw_t *dev,uint8_t reg,uint8_t *buf,size_t len);
-int lps28dfw_write_reg(lps28dfw_t *dev,uint8_t reg,uint8_t value);
+i2c_err_t lps28dfw_read_reg(lps28dfw_t *dev,uint8_t reg,uint8_t *buf,size_t len);
+i2c_err_t lps28dfw_write_reg(lps28dfw_t *dev,uint8_t reg,uint8_t value);
 
 #ifdef __cplusplus
 }

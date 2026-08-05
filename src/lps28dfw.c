@@ -34,15 +34,13 @@ i2c_err_t lps28dfw_read_reg(lps28dfw_t *dev,uint8_t reg,uint8_t *buf,size_t len)
 
 i2c_err_t lps28dfw_write_reg(lps28dfw_t *dev,uint8_t reg,uint8_t value){
     if (dev == NULL)
-        return RD_ERROR_1;
+        return ARG_ERROR;
 
     uint8_t tx[2];
     tx[0] = reg;
     tx[1] = value;
     int ret = i2c_write_blocking(dev->i2c,dev->addr,tx,2,false);
-
-    if (ret != 2)
-        return RD_ERROR_1;
+    if (ret < 0) return WR_ERROR;
 
     return NO_ERROR;
 }
@@ -68,7 +66,7 @@ i2c_err_t lps28dfw_write_register(lps28dfw_t *dev,uint8_t reg,const uint8_t *dat
     memcpy(&tx[1], data, len);
     int ret = i2c_write_blocking(dev->i2c,dev->addr,tx,len + 1,false);
     if (ret != (int)(len + 1))
-        return RD_ERROR_1;
+        return WR_ERROR;
 
     return NO_ERROR;
 }
@@ -177,7 +175,7 @@ i2c_err_t lps28dfw_set_config(lps28dfw_t *dev, const lps28dfw_config_t *cfg){
     }
 
     if (lps28dfw_set_fs_mode(dev, cfg->fs_mode)!=NO_ERROR){
-        return WR_ERROR
+        return WR_ERROR;
     }
     return NO_ERROR;
 }
@@ -196,7 +194,8 @@ i2c_err_t lps28dfw_init(lps28dfw_t *dev){
         .odr = LPS28DFW_ODR_25HZ,
         .lpf = LPS28DFW_LPF_ODR_DIV4,
         .enable_bdu = true,
-        .auto_increment = true
+        .auto_increment = true,
+        .fs_mode = 0
     };
 
     return lps28dfw_set_config(dev, &cfg);
@@ -271,8 +270,14 @@ i2c_err_t lps28dfw_read_raw(lps28dfw_t *dev, int32_t *raw_pressure, int16_t *raw
  * Conversion Functions
  ******************************************************************************/
 
-float lps28dfw_convert_pressure(int32_t raw_pressure){
-    return ((float)raw_pressure) / 4096.0f;
+float lps28dfw_convert_pressure(int32_t raw_pressure, lps28dfw_fs_mode_t mode){
+    if (mode == LPS28DFW_FS_MODE_1260){
+        return ((float)raw_pressure) / 4096.0f;
+    } 
+    else if (mode == LPS28DFW_FS_MODE_4060){
+        return ((float)raw_pressure) / 2048.0f;
+    }
+    //return ((float)raw_pressure) / 4096.0f;
 }
 
 /******************************************************************************/
@@ -285,7 +290,7 @@ float lps28dfw_convert_temperature(int16_t raw_temperature){
  * Floating Point Pressure
  ******************************************************************************/
 
-i2c_err_t lps28dfw_read_pressure(lps28dfw_t *dev,float *pressure_hpa){
+i2c_err_t lps28dfw_read_pressure(lps28dfw_t *dev,float *pressure_hpa, lps28dfw_fs_mode_t mode){
     int32_t raw;
     if (pressure_hpa == NULL)
         return ARG_ERROR;
@@ -293,7 +298,7 @@ i2c_err_t lps28dfw_read_pressure(lps28dfw_t *dev,float *pressure_hpa){
     if (lps28dfw_read_pressure_raw(dev,&raw) != NO_ERROR){
         return OTHR_ERROR;
     }
-    *pressure_hpa = lps28dfw_convert_pressure(raw);
+    *pressure_hpa = lps28dfw_convert_pressure(raw, mode);
     return NO_ERROR;
 }
 
@@ -318,7 +323,7 @@ i2c_err_t lps28dfw_read_temperature(lps28dfw_t *dev,float *temperature_c){
  * Read Both Pressure + Temperature
  ******************************************************************************/
 
-i2c_err_t lps28dfw_read_all(lps28dfw_t *dev,float *pressure_hpa,float *temperature_c){
+i2c_err_t lps28dfw_read_all(lps28dfw_t *dev,float *pressure_hpa,float *temperature_c, lps28dfw_fs_mode_t mode){
     int32_t rawPressure;
     int16_t rawTemperature;
 
@@ -329,7 +334,7 @@ i2c_err_t lps28dfw_read_all(lps28dfw_t *dev,float *pressure_hpa,float *temperatu
     if (lps28dfw_read_raw(dev,&rawPressure,&rawTemperature) != NO_ERROR){
         return RD_ERROR_2;
     }
-    *pressure_hpa = lps28dfw_convert_pressure(rawPressure);
+    *pressure_hpa = lps28dfw_convert_pressure(rawPressure, mode);
     *temperature_c = lps28dfw_convert_temperature(rawTemperature);
     return NO_ERROR;
 }
@@ -386,8 +391,8 @@ int lps28dfw_fifo_get_level(lps28dfw_t *dev,uint8_t *level){
 
 /******************************************************************************/
 
-int lps28dfw_fifo_read_sample(lps28dfw_t *dev,float *pressure, float *temperature){
-    return lps28dfw_read_all(dev,pressure,temperature);
+int lps28dfw_fifo_read_sample(lps28dfw_t *dev,float *pressure, float *temperature, lps28dfw_fs_mode_t mode){
+    return lps28dfw_read_all(dev,pressure,temperature, mode);
 }
 
 i2c_err_t lps28dfw_set_fs_mode(lps28dfw_t *dev, lps28dfw_fs_mode_t mode){

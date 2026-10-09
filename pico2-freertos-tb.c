@@ -22,7 +22,7 @@
 #include "queue.h"
 #include "semphr.h"
 
-#define SAMPLE_PERIOD 4000 // in usec
+#define SAMPLE_PERIOD 8000 // in usec
 
 /*
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
@@ -150,6 +150,10 @@ void initializeData() {
 
 // Freertos task functions
 void fsamplingTask(void *arg){
+    xSemaphoreTake(devState_mutex, portMAX_DELAY);
+    cur_state.state = (fsm_state_t)(MEASR);
+    xSemaphoreGive(devState_mutex);
+
     uint32_t notify;
     for(;;) {
         xTaskNotifyWait(0, UINT32_MAX, &notify, portMAX_DELAY);
@@ -182,7 +186,7 @@ void fblink_dp_task(void *arg) {
             continue;
         } else {
             gpio_xor_mask(SEG_DP_MASK);
-            vTaskDelay(pdMS_TO_TICKS(400));
+            vTaskDelay(pdMS_TO_TICKS(1000));
         }
     }
 }
@@ -382,6 +386,18 @@ void fuartTransmitTask(void *arg) {
         xTaskNotifyWait(0, UINT32_MAX, &notify, portMAX_DELAY);
         /*
         xSemaphoreTake(mcpState_mutex, portMAX_DELAY);
+        for (int i = 0; i < MCP960X_DATA_NUM-1; ++i) {
+        
+            uart_fprint(UART_PORT, mcp9601Data.tempHot[i], 2, ',');
+            uart_fprint(UART_PORT, mcp9601Data.tempCold[i], 2, ',');    
+        }
+        uart_fprint(UART_PORT, mcp9601Data.tempHot[2], 2, ',');
+        uart_fprint(UART_PORT, mcp9601Data.tempCold[2], 2, ',');
+        
+        xSemaphoreGive(mcpState_mutex);
+        */
+        /*
+        xSemaphoreTake(mcpState_mutex, portMAX_DELAY);
         uart_fprint(UART_PORT, mcp9601Data.tempHot[0], 3, ',');
         uart_fprint(UART_PORT, mcp9601Data.tempCold[0], 3, '\n');
         xSemaphoreGive(mcpState_mutex);
@@ -397,13 +413,13 @@ void fuartTransmitTask(void *arg) {
         uart_fprint(UART_PORT, ina228Data.shunt_volt[0], 6, '\n');
         xSemaphoreGive(inaState_mutex);
         */
+
         xSemaphoreTake(lpsState_mutex, portMAX_DELAY);
         uart_fprint(UART_PORT, lps28Data.pressure[lps_dev1.data_index], 2, ',');
         uart_fprint(UART_PORT, lps28Data.temperature[lps_dev1.data_index], 2, ',');
         uart_fprint(UART_PORT, lps28Data.pressure[lps_dev2.data_index], 2, ',');
         uart_fprint(UART_PORT, lps28Data.temperature[lps_dev2.data_index], 2, '\n');
         xSemaphoreGive(lpsState_mutex);
-        
     }
 }
 
@@ -430,7 +446,7 @@ void init_segment_io(void) {
 
 int main(){
     stdio_init_all();
-    cur_state.state = INIT;
+    cur_state.state = (fsm_state_t)INIT;
     
     uart_init(UART_PORT, 115200);
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
@@ -460,12 +476,29 @@ int main(){
     devState_mutex = xSemaphoreCreateMutex();
 
     initializeData();
+    uint8_t rxdata;
+    if (mcp9601_check_available(I2C_PORT, 0x67, &rxdata)) {
+        // printf("I2C device found at 0x15 67.\n");
+        uart_puts(UART_PORT, "I2C device found at 0x67\n");
+    } else {
+        uart_puts(UART_PORT, "I2C device not found at 0x67\n");
+    }
+    if (mcp9601_check_available(I2C_PORT, 0x66, &rxdata)) {
+        uart_puts(UART_PORT, "I2C device found at 0x66\n");
+    } else {
+        uart_puts(UART_PORT, "I2C device not found at 0x66\n");
+    }
+    if (mcp9601_check_available(I2C_PORT, 0x65, &rxdata)) {
+        uart_puts(UART_PORT, "I2C device found at 0x65\n");
+    } else {
+        uart_puts(UART_PORT, "I2C device not found at 0x65\n");
+    }
     for (int i = 0; i < MCP960X_DATA_NUM; ++i) {
         if (!mcp9601_init_device((mcp9601_t*)(mcp_arr+i))) {
-            uart_puts(UART_PORT, "MCP-DEV NOT device found \n");
+            uart_puts(UART_PORT, "MCP-DEV device found \n");
         }
     }
-    
+
 
     // check if i2c mcp-device at 0x67 is present
     
@@ -566,7 +599,6 @@ int main(){
     }
     */
 
-    
 
     if (lps28dfw_check_available(&lps_dev1) != NO_ERROR){
         uart_puts(UART_PORT, "LPS28DFW-DEV-1 not detected!\n");
@@ -597,14 +629,14 @@ int main(){
     }
     
     uart_puts(UART_PORT, "Initialization Complete!\n");
-    printf("Hello! init complete!\n");
+    //printf("Hello! init complete!\n");
     sleep_ms(5000);
     add_alarm_in_us(SAMPLE_PERIOD, alarm_callback, NULL, false);
     xTaskCreate(fsamplingTask, "sampling-Task", 256, NULL, configMAX_PRIORITIES - 1, &sampling_taskHandle);
     xTaskCreate(fmcp_rtemp_all_task, "mcp-i2c-rt-task", 768, NULL, configMAX_PRIORITIES - 1, &mcp_rtemp_all_taskHandle);
     xTaskCreate(flps28ReadTask, "lps28-i2c-read-task", 768, NULL, configMAX_PRIORITIES - 1, &lps28_read_taskHandle);
-    xTaskCreate(fblink_dp_task, "disp-seg-dpblink-task", 250, NULL, configMAX_PRIORITIES - 2, &blink_dp_taskHandle);
-    xTaskCreate(fdisp_seg_task, "disp-seg-state-task", 300, NULL, configMAX_PRIORITIES - 2, &dispSeg_taskHandle);
+    xTaskCreate(fblink_dp_task, "disp-seg-dpblink-task", 250, NULL, configMAX_PRIORITIES - 1, &blink_dp_taskHandle);
+    xTaskCreate(fdisp_seg_task, "disp-seg-state-task", 300, NULL, configMAX_PRIORITIES - 1, &dispSeg_taskHandle);
     // xTaskCreate(fpac19VoltReadTask, "pac-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &pac_vread_taskHandle);
     // xTaskCreate(finaVoltReadTask, "ina-i2c-rv-task", 768, NULL, configMAX_PRIORITIES - 1, &ina_vread_taskHandle);
     xTaskCreate(fuartTransmitTask, "uart-rxtx-task", 768, NULL, configMAX_PRIORITIES - 1, &uart_transmit_taskHandle);

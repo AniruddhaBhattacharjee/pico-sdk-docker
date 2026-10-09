@@ -45,7 +45,7 @@ if (TARGET tinyusb_device)
     pico_set_program_version(pico2-freertos-tb "0.1")
 
     # Modify the below lines to enable/disable output over UART/USB
-    pico_enable_stdio_usb(pico2-freertos-tb 1)
+    pico_enable_stdio_usb(pico2-freertos-tb 0)
     pico_enable_stdio_uart(pico2-freertos-tb 1)
     
 

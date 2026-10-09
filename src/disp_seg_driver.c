@@ -12,6 +12,7 @@ void display_state_start() {
     // turn off
     gpio_put(SEG_B, 1);
     gpio_put(SEG_E, 1);
+    gpio_put(SEG_DP, 1);
     return ;
 }
 
@@ -25,6 +26,7 @@ void display_state_stop(void) {
     gpio_put(SEG_D, 1);
     gpio_put(SEG_E, 1);
     gpio_put(SEG_F, 1);
+    gpio_put(SEG_DP, 1);
     return ;
 
 }
@@ -39,6 +41,7 @@ void display_state_init(void) {
     gpio_put(SEG_E, 1);
     gpio_put(SEG_F, 1);
     gpio_put(SEG_G, 1);
+    gpio_put(SEG_DP, 1);
     return ;
 }
 
@@ -65,6 +68,7 @@ void display_state_error(void) {
     // turn off
     gpio_put(SEG_B, 1);
     gpio_put(SEG_C, 1);
+    gpio_put(SEG_DP, 1);
     return ;
 }
 
@@ -77,6 +81,7 @@ void display_state_all(void) {
     gpio_put(SEG_E, 0);
     gpio_put(SEG_F, 0);
     gpio_put(SEG_G, 0);
+    gpio_put(SEG_DP, 0);
     return ;
 
 }

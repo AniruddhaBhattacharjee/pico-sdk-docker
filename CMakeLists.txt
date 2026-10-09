@@ -39,13 +39,13 @@ if (TARGET tinyusb_device)
     message("With TinuUSB build...")
     # Add executable. Default name is the project name, version 0.1
 
-    add_executable(pico2-freertos-tb pico2-freertos-tb.c src/mcp9601_hal.c src/uart_helpers.c src/ina228.c src/pac19xx.c src/lps28dfw.c)
+    add_executable(pico2-freertos-tb pico2-freertos-tb.c src/mcp9601_hal.c src/uart_helpers.c src/ina228.c src/pac19xx.c src/lps28dfw.c src/disp_seg_driver.c)
 
     pico_set_program_name(pico2-freertos-tb "pico2-freertos-tb")
     pico_set_program_version(pico2-freertos-tb "0.1")
 
     # Modify the below lines to enable/disable output over UART/USB
-    pico_enable_stdio_usb(pico2-freertos-tb 0)
+    pico_enable_stdio_usb(pico2-freertos-tb 1)
     pico_enable_stdio_uart(pico2-freertos-tb 1)
     
 
@@ -70,6 +70,7 @@ if (TARGET tinyusb_device)
         hardware_timer
         hardware_clocks
         hardware_uart
+        hardware_gpio
         )
 
     pico_add_extra_outputs(pico2-freertos-tb)

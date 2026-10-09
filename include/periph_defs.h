@@ -6,14 +6,23 @@
 #define I2C_SCL_PIN 17
 #define I2C_BUS_FREQ (100*1000) // 100 KHz i2c speed
 
-#define GPIO_TOGGLE_PIN 2
-#define GPIO_TEST_PIN 3
+//#define GPIO_TOGGLE_PIN 2
+//#define GPIO_TEST_PIN 3
 
-#define UART1_TX_PIN 8
-#define UART1_RX_PIN 9
-#define UART_PORT uart1
+#define UART_TX_PIN 8
+#define UART_RX_PIN 9
+#define UART_PORT uart0
 
 #define INA228_SHUNT_RES (float)(0.015)
 #define INA228_MAX_CURRENT (float)(10.0)
 
+#define SEG_A 3
+#define SEG_B 2
+#define SEG_F 8
+#define SEG_G 9
+#define SEG_DP 4
+#define SEG_C 5
+#define SEG_D 6
+#define SEG_E 7
+ 
 #endif

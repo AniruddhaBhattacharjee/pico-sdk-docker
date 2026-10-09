@@ -13,17 +13,14 @@ extern "C" {
 #include "common_defs.h"
 #include "lps28dfw_reg.h"
 
-/******************************************************************************
- * Number of stored samples
- ******************************************************************************/
+
+
 
 #ifndef LPS28DFW_DATA_NUM
-#define LPS28DFW_DATA_NUM 4
+#define LPS28DFW_DATA_NUM 2
 #endif
 
-/******************************************************************************
- * Device Structure
- ******************************************************************************/
+
 
 typedef struct{
     i2c_inst_t *i2c;
@@ -31,18 +28,13 @@ typedef struct{
     uint8_t data_index;
 } lps28dfw_t;
 
-/******************************************************************************
- * Sensor Data Structure
- ******************************************************************************/
+
 
 typedef struct{
     float pressure[LPS28DFW_DATA_NUM];
     float temperature[LPS28DFW_DATA_NUM];
 } lps28dfwData_t;
 
-/******************************************************************************
- * Configuration Structure
- ******************************************************************************/
 
 typedef struct
 {
@@ -53,11 +45,9 @@ typedef struct
     uint8_t fs_mode;
 } lps28dfw_config_t;
 
-/******************************************************************************
- * Configuration and Setting Functions: Public Functions
- ******************************************************************************/
 
-/* Device */
+
+
 
 int lps28dfw_check_available(lps28dfw_t *dev);
 i2c_err_t lps28dfw_init(lps28dfw_t *dev);
@@ -66,54 +56,37 @@ i2c_err_t lps28dfw_set_config(lps28dfw_t *dev,const lps28dfw_config_t *cfg);
 i2c_err_t lps28dfw_set_odr(lps28dfw_t *dev,lps28dfw_odr_t odr);
 i2c_err_t lps28dfw_enable_lowpass(lps28dfw_t *dev,lps28dfw_lpf_t mode);
 i2c_err_t lps28dfw_set_fs_mode(lps28dfw_t *dev, lps28dfw_fs_mode_t mode);
-/******************************************************************************
- * Register Access
- ******************************************************************************/
+
 
 i2c_err_t lps28dfw_read_register(lps28dfw_t *dev,uint8_t reg,uint8_t *data,size_t len);
 i2c_err_t lps28dfw_write_register(lps28dfw_t *dev,uint8_t reg,const uint8_t *data,size_t len);
-
-/******************************************************************************
- * Raw Measurements
- ******************************************************************************/
 
 i2c_err_t lps28dfw_read_pressure_raw(lps28dfw_t *dev,int32_t *raw_pressure);
 i2c_err_t lps28dfw_read_temperature_raw(lps28dfw_t *dev,int16_t *raw_temperature);
 i2c_err_t lps28dfw_read_raw(lps28dfw_t *dev,int32_t *raw_pressure,int16_t *raw_temperature);
 
-/******************************************************************************
- * Floating Point Measurements
- ******************************************************************************/
+
 
 i2c_err_t lps28dfw_read_pressure(lps28dfw_t *dev,float *pressure_hpa, lps28dfw_fs_mode_t mode);
 i2c_err_t lps28dfw_read_temperature(lps28dfw_t *dev,float *temperature_c);
 i2c_err_t lps28dfw_read_all(lps28dfw_t *dev,float *pressure_hpa,float *temperature_c, lps28dfw_fs_mode_t mode);
-/******************************************************************************
- * Conversion Helpers
- ******************************************************************************/
+
 
 float lps28dfw_convert_pressure(int32_t raw_pressure, lps28dfw_fs_mode_t mode);
 float lps28dfw_convert_temperature(int16_t raw_temperature);
 
-/******************************************************************************
- * FIFO Functions
- ******************************************************************************/
+
 
 i2c_err_t lps28dfw_fifo_set_mode(lps28dfw_t *dev, lps28dfw_fifo_mode_t mode);
 int lps28dfw_fifo_get_level(lps28dfw_t *dev,uint8_t *level);
 int lps28dfw_fifo_read_sample(lps28dfw_t *dev,float *pressure,float *temperature, lps28dfw_fs_mode_t mode);
-/******************************************************************************
- * Status
- ******************************************************************************/
+
 
 i2c_err_t lps28dfw_get_status(lps28dfw_t *dev,uint8_t *status);
 bool lps28dfw_pressure_ready(lps28dfw_t *dev);
 bool lps28dfw_temperature_ready(lps28dfw_t *dev);
 
-/******************************************************************************
- * Internal Helpers
- * Used only by lps28dfw.c
- ******************************************************************************/
+
 i2c_err_t lps28dfw_read_reg(lps28dfw_t *dev,uint8_t reg,uint8_t *buf,size_t len);
 i2c_err_t lps28dfw_write_reg(lps28dfw_t *dev,uint8_t reg,uint8_t value);
 

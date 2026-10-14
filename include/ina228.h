@@ -7,18 +7,17 @@
 #include "ina228_reg.h"
 #include "common_defs.h"
 
-typedef struct
-{
+typedef struct {
     i2c_inst_t* i2c;
     uint8_t addr;
     float shunt_resistor;
-    float current_lsb;// A per bit(calibration)
+    float current_lsb;  // A per bit(calibration)
     uint8_t data_index;
 } ina228_t;
 
 typedef struct {
     float bus_volt[INA228_DATA_NUM];
-    float shunt_volt[INA228_DATA_NUM];
+    float current[INA228_DATA_NUM];
 } ina228Data_t;
 
 static int32_t read_s24(uint8_t *buf, uint8_t resv_bits);
@@ -26,6 +25,7 @@ static uint16_t read_u16(uint8_t *buf, uint8_t resv_bits);
 i2c_err_t ina228_check_available(ina228_t *dev);
 i2c_err_t ina228_init(ina228_t *dev);
 i2c_err_t ina228_set_calibration(ina228_t *dev, float max_current, float shunt_resistor);
+uint8_t ina228_setup_device(ina228_t *dev, float max_current)
 i2c_err_t ina228_read_bus_voltage(ina228_t *dev, float *voltage);
 i2c_err_t ina228_read_shunt_voltage(ina228_t *dev, float *voltage);
 i2c_err_t ina228_read_current(ina228_t *dev, float *current);

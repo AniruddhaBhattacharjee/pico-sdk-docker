@@ -13,9 +13,6 @@
 #define UART_RX_PIN 9
 #define UART_PORT uart0
 
-#define INA228_SHUNT_RES (float)(0.015)
-#define INA228_MAX_CURRENT (float)(10.0)
-
 #define SEG_A 3
 #define SEG_B 2
 #define SEG_F 8

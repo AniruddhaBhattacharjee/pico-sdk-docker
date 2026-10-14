@@ -58,6 +58,23 @@ i2c_err_t ina228_set_calibration(ina228_t *dev, float max_current, float shunt_r
     return NO_ERROR;
 }
 
+uint8_t ina228_setup_device(ina228_t *dev, float max_current) {
+    uint8_t rxdata;
+    uint8_t check = 1, p1=1, p2=1, p3=1;
+    if (ina228_check_available(dev) != NO_ERROR) {
+        p1 = 0;
+    }
+
+    if (ina228_init(dev) != NO_ERROR) {
+        p2 = 0;
+    }
+
+    if (ina228_set_calibration(dev, max_current, dev->shunt_resistor) != NO_ERROR) {
+        p3 = 0;
+    }
+    return (uint8_t)(p1 && p2 && p3);
+}
+
 i2c_err_t ina228_read_bus_voltage(ina228_t *dev, float *voltage){
     uint8_t buf[3];
     // uint32_t buf;

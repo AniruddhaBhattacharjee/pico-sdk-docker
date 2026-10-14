@@ -1,8 +1,8 @@
 #ifndef COMMON_DEFS_H
 #define COMMON_DEFS_H
 
-#define MCP960X_DATA_NUM 3
-#define INA228_DATA_NUM 1
+#define MCP960X_DATA_NUM 2
+#define INA228_DATA_NUM 2
 #define PAC19XX_DATA_NUM 4
 #define LPS28DFW_DATA_NUM 2
 
@@ -27,5 +27,11 @@ typedef enum {
 typedef struct {
     fsm_state_t state;
 } device_state_t;
+
+typedef struct {
+    uint8_t USE_INA228;
+    uint8_t USE_MCP9601;
+    uint8_t USE_LPS28DFW;
+} sensor_use_t;
 
 #endif

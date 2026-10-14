@@ -2,6 +2,13 @@
 #define INA228_REG_H
 
 #define INA228_I2C_ADDR_DEFAULT  0x40
+#define INA228_I2C_ADDR_1 0x41
+#define INA228_I2C_ADDR_2 0x44
+#define INA228_I2C_ADDR_3 0x45 
+
+// hardware spec
+#define INA228_SHUNT_VALUE (float)(0.015)
+#define INA228_MAX_CURRENT (float)(10.0)
 
 // Registers Definitions
 #define INA228_REG_CONFIG        0x00

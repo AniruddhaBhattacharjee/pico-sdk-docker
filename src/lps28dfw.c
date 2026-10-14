@@ -175,12 +175,13 @@ i2c_err_t lps28dfw_set_config(lps28dfw_t *dev, const lps28dfw_config_t *cfg){
 // Initialization
 
 
-i2c_err_t lps28dfw_init(lps28dfw_t *dev){
+i2c_err_t lps28dfw_init(lps28dfw_t *dev, lps28dfw_config_t *cfg) {
+    uint8_t p1=1, p2=1, p3=1;
     if (lps28dfw_check_available(dev) != NO_ERROR)
-        return OTHR_ERROR;
+        p1 = 0;
     if (lps28dfw_soft_reset(dev) != NO_ERROR)
-        return OTHR_ERROR;
-    
+        p2 = 0;
+    /*
         lps28dfw_config_t cfg ={
         .odr = LPS28DFW_ODR_25HZ,
         .lpf = LPS28DFW_LPF_ODR_DIV4,
@@ -188,8 +189,11 @@ i2c_err_t lps28dfw_init(lps28dfw_t *dev){
         .auto_increment = true,
         .fs_mode = 0
     };
-
-    return lps28dfw_set_config(dev, &cfg);
+    */
+    if (lps28dfw_set_config(dev, cfg) != NO_ERROR) {
+        p3 = 0;
+    }
+    return p1 && p2 && p3;
 }
 
 
@@ -271,7 +275,7 @@ float lps28dfw_convert_pressure(int32_t raw_pressure, lps28dfw_fs_mode_t mode){
     //return ((float)raw_pressure) / 4096.0f;
 }
 
-/******************************************************************************/
+
 
 float lps28dfw_convert_temperature(int16_t raw_temperature){
     return ((float)raw_temperature) / 100.0f;
@@ -309,9 +313,8 @@ i2c_err_t lps28dfw_read_temperature(lps28dfw_t *dev,float *temperature_c){
     return NO_ERROR;
 }
 
-/******************************************************************************
- * Read Both Pressure + Temperature
- ******************************************************************************/
+// Read Both Pressure + Temperature
+
 
 i2c_err_t lps28dfw_read_all(lps28dfw_t *dev,float *pressure_hpa,float *temperature_c, lps28dfw_fs_mode_t mode){
     int32_t rawPressure;

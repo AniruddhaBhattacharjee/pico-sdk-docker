@@ -1,6 +1,7 @@
 #include "mcp9601_reg.h"
 #include "mcp9601_hal.h"
 #include <stdint.h>
+// #include <stdio.h>
 /**
  * Checks whether specific MCP9601 i2c device is present on i2c bus
  * 
@@ -58,14 +59,14 @@ uint8_t mcp9601_set_device_config(mcp9601_t *dev, tcold_res_t tcoldres, adc_res_
 uint8_t mcp9601_init_device(mcp9601_t *dev) {
     uint8_t rxdata;
     uint8_t p1=1, p2=1;
-    if (mcp9601_check_available(dev->i2c, dev->addr, &rxdata)) {
-        // printf("I2C device found at 0x15 67.\n");
+    if (!mcp9601_check_available(dev->i2c, dev->addr, &rxdata)) {
+        // printf("[drvr] I2C device found at 0x67.\n");
         // uart_puts(UART_PORT, "I2C device found at 0x67\n");
         p1 = 0;
     }
     
     if(!(mcp9601_set_device_config(dev, dev->cold_res, dev->adc_res))){
-        //printf("Unable to set configurations for I2C device at 0x67!\n");
+        // printf("[drvr] Unable to set configurations for I2C device at 0x67!\n");
         // uart_puts(UART_PORT, "Unable to set configurations for I2C device at 0x67!\n");
         p2 = 0;
     }

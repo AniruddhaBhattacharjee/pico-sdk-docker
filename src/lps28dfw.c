@@ -175,7 +175,7 @@ i2c_err_t lps28dfw_set_config(lps28dfw_t *dev, const lps28dfw_config_t *cfg){
 // Initialization
 
 
-i2c_err_t lps28dfw_init(lps28dfw_t *dev, lps28dfw_config_t *cfg) {
+uint8_t lps28dfw_init(lps28dfw_t *dev, lps28dfw_config_t *cfg) {
     uint8_t p1=1, p2=1, p3=1;
     if (lps28dfw_check_available(dev) != NO_ERROR)
         p1 = 0;

@@ -25,7 +25,7 @@ static uint16_t read_u16(uint8_t *buf, uint8_t resv_bits);
 i2c_err_t ina228_check_available(ina228_t *dev);
 i2c_err_t ina228_init(ina228_t *dev);
 i2c_err_t ina228_set_calibration(ina228_t *dev, float max_current, float shunt_resistor);
-uint8_t ina228_setup_device(ina228_t *dev, float max_current)
+uint8_t ina228_setup_device(ina228_t *dev, float max_current);
 i2c_err_t ina228_read_bus_voltage(ina228_t *dev, float *voltage);
 i2c_err_t ina228_read_shunt_voltage(ina228_t *dev, float *voltage);
 i2c_err_t ina228_read_current(ina228_t *dev, float *current);

@@ -22,7 +22,7 @@
 #include "queue.h"
 #include "semphr.h"
 
-#define SAMPLE_PERIOD 6000 // in usec
+#define SAMPLE_PERIOD 10000 // in usec
 
 // Freertos Task Handles
 static TaskHandle_t sampling_taskHandle;
@@ -85,18 +85,17 @@ mcp9601_t mcp_dev3 = {
 
 mcp9601_t mcp_arr[MCP960X_DATA_NUM] = {
     {I2C_PORT, 0x65, RES_18B, HIGH_RES, 0},
-    {I2C_PORT, 0x66, RES_18B, HIGH_RES, 1},
-    {I2C_PORT, 0x67, RES_18B, HIGH_RES, 2}
+    {I2C_PORT, 0x67, RES_18B, HIGH_RES, 1}
 };
 
-ina228_t mcp_arr[MCP960X_DATA_NUM] = {
+ina228_t ina_arr[INA228_DATA_NUM] = {
     {I2C_PORT, INA228_I2C_ADDR_DEFAULT, INA228_SHUNT_VALUE, 0, 0},
     {I2C_PORT, INA228_I2C_ADDR_1, INA228_SHUNT_VALUE, 0, 1}
 };
 
 // pac19xx_t pac19_dev1;
 
-lps228dfw_t lps_arr[LPS28DFW_DATA_NUM] = {
+lps28dfw_t lps_arr[LPS28DFW_DATA_NUM] = {
     {I2C_PORT, LPS28DFW_I2C_ADDR_LOW, 0},
     {I2C_PORT, LPS28DFW_I2C_ADDR_HIGH, 1}
 };
@@ -416,12 +415,12 @@ void finaVoltReadTask(void *arg) {
     float busVolt = 0.0f, current = 0.0f;
     for(;;){
         xTaskNotifyWait(0, UINT32_MAX, &notify, portMAX_DELAY);
-        xSempahoreTake(i2cBus_mutex, portMAX_DELAY);
+        xSemaphoreTake(i2cBus_mutex, portMAX_DELAY);
         for (int i = 0; i < INA228_DATA_NUM; ++i) {
-            if (ina228_read_bus_voltage(&ina_dev1, &busVolt) != NO_ERROR){
+            if (ina228_read_bus_voltage((ina228_t*)(ina_arr+i), &busVolt) != NO_ERROR){
                 busVolt = -1.0f;
             }
-            if (ina228_read_current(&ina_dev1, &current) != NO_ERROR){
+            if (ina228_read_current((ina228_t*)(ina_arr+i), &current) != NO_ERROR){
                 current = -1.0f;
             }
             xSemaphoreTake(inaState_mutex, portMAX_DELAY);
@@ -477,7 +476,11 @@ void fuartTransmitTask(void *arg) {
             xSemaphoreTake(inaState_mutex, portMAX_DELAY);
             ina_power[0] = ina228Data.bus_volt[0] * ina228Data.current[0];
             ina_power[1] = ina228Data.bus_volt[1] * ina228Data.current[1];
+            uart_fprint(UART_PORT, ina228Data.bus_volt[0], 2, ',');
+            uart_fprint(UART_PORT, ina228Data.current[0], 2, ',');
             uart_fprint(UART_PORT, ina_power[0], 2, ',');
+            uart_fprint(UART_PORT, ina228Data.bus_volt[1], 2, ',');
+            uart_fprint(UART_PORT, ina228Data.current[1], 2, ',');
             uart_fprint(UART_PORT, ina_power[1], 2, ',');
             xSemaphoreGive(inaState_mutex);
         }
@@ -486,9 +489,7 @@ void fuartTransmitTask(void *arg) {
             uart_fprint(UART_PORT, mcp9601Data.tempHot[0], 2, ',');
             uart_fprint(UART_PORT, mcp9601Data.tempCold[0], 2, ',');
             uart_fprint(UART_PORT, mcp9601Data.tempHot[1], 2, ',');
-            uart_fprint(UART_PORT, mcp9601Data.tempCold[1], 2, ',');
-            uart_fprint(UART_PORT, mcp9601Data.tempHot[2], 2, ',');
-            uart_fprint(UART_PORT, mcp9601Data.tempCold[2], 2, '\n');
+            uart_fprint(UART_PORT, mcp9601Data.tempCold[1], 2, '\n');
             xSemaphoreGive(mcpState_mutex);
         }
         xSemaphoreGive(uartTransmit_mutex);
@@ -560,29 +561,33 @@ int main(){
         uart_puts(UART_PORT, "I2C device found at 0x66\n");
     } else {
         uart_puts(UART_PORT, "I2C device not found at 0x66\n");
-    }
+    }/*
     if (mcp9601_check_available(I2C_PORT, 0x65, &rxdata)) {
         uart_puts(UART_PORT, "I2C device found at 0x65\n");
     } else {
         uart_puts(UART_PORT, "I2C device not found at 0x65\n");
-    }
-    
+    }*/
+    sleep_ms(2000);
     for (mcp_i = 0; mcp_i < MCP960X_DATA_NUM; ++mcp_i) {
         if (!mcp9601_init_device((mcp9601_t*)(mcp_arr+mcp_i))) {
-            //uart_puts(UART_PORT, "MCP-DEV device found \n");
+            uart_puts(UART_PORT, "MCP-DEV device not found-");
+            uart_fprint(UART_PORT, (float)(mcp_i), 2, '\n');
             break;
         }
     }
 
     for (ina_i = 0 ; ina_i < INA228_DATA_NUM; ++ina_i) {
-        if (!ina228_setup_device((ina228_t*)(ina_arr+ina_i))) {
-            //uart_puts(UART_PORT, "INA-DEV device found \n");
+        if (!ina228_setup_device((ina228_t*)(ina_arr+ina_i), INA228_MAX_CURRENT)) {
+            uart_puts(UART_PORT, "INA-DEV device not found-");
+            uart_fprint(UART_PORT, (float)(ina_i), 2, '\n');
             break;
         }
     }
 
     for (lps_i = 0; lps_i < LPS28DFW_DATA_NUM; ++lps_i) {
         if (!lps28dfw_init((lps28dfw_t*)(lps_arr+lps_i), (lps28dfw_config_t*)(lpsCfg_arr+lps_i))) {
+            uart_puts(UART_PORT, "lps device not found-");
+            uart_fprint(UART_PORT, (float)(lps_i), 2, '\n');
             break;
         }
     }
@@ -608,15 +613,19 @@ int main(){
     */
     if (mcp_i == MCP960X_DATA_NUM) {
         sensor_check.USE_MCP9601 = 1;
+        uart_puts(UART_PORT, "[*] Using all mcp9601 devices\n");
     }
     if (ina_i == INA228_DATA_NUM) {
         sensor_check.USE_INA228 = 1;
+        uart_puts(UART_PORT, "[*] Using all ina228 devices\n");
     }
     if (lps_i == LPS28DFW_DATA_NUM) {
         sensor_check.USE_LPS28DFW = 1;
+        uart_puts(UART_PORT, "[*] Using all lps28dfw devices\n");
     }
+    sleep_ms(3000);
     if (sensor_check.USE_LPS28DFW) {
-        while ((!lps28dfw_pressure_ready(&lps_dev1)) && (!lps28dfw_pressure_ready(&lps_dev2))){
+        while ((!lps28dfw_pressure_ready((lps28dfw_t*)lps_arr+0)) && (!lps28dfw_pressure_ready((lps28dfw_t*)(lps_arr+1)))){
             uart_puts(UART_PORT, "In Tight loop\n");
             tight_loop_contents();
         }
